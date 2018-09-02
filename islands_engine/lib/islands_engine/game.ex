@@ -5,14 +5,7 @@ defmodule IslandsEngine.Game do
   @players [:player1, :player2]
 
   def start_link(name) when is_binary(name) do
-    GenServer.start_link(__MODULE__, name, [])
-  end
-
-  @impl GenServer
-  def init(name) do
-    player1 = %{name: name, board: Board.new(), guesses: Guesses.new()}
-    player2 = %{name: nil, board: Board.new(), guesses: Guesses.new()}
-    {:ok, %{player1: player1, player2: player2, rules: Rules.new()}}
+    GenServer.start_link(__MODULE__, name, name: via_tuple(name))
   end
 
   def add_player(game, name) when is_binary(name) do
@@ -27,7 +20,16 @@ defmodule IslandsEngine.Game do
     GenServer.call(game, {:guess_coordinate, player, row, col})
   end
 
+  def via_tuple(name), do: {:via, Registry, {Registry.Game, name}}
+
   ##################################################################
+
+  @impl GenServer
+  def init(name) do
+    player1 = %{name: name, board: Board.new(), guesses: Guesses.new()}
+    player2 = %{name: nil, board: Board.new(), guesses: Guesses.new()}
+    {:ok, %{player1: player1, player2: player2, rules: Rules.new()}}
+  end
 
   @impl GenServer
   def handle_call({:add_player, name}, _from, state_data) do

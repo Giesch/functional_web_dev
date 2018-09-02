@@ -3,6 +3,7 @@ defmodule IslandsEngine.Game do
   alias IslandsEngine.{Board, Coordinate, Guesses, Island, Rules}
 
   @players [:player1, :player2]
+  @timeout 60 * 60 * 24 * 1000
 
   def start_link(name) when is_binary(name) do
     GenServer.start_link(__MODULE__, name, name: via_tuple(name))
@@ -28,7 +29,7 @@ defmodule IslandsEngine.Game do
   def init(name) do
     player1 = %{name: name, board: Board.new(), guesses: Guesses.new()}
     player2 = %{name: nil, board: Board.new(), guesses: Guesses.new()}
-    {:ok, %{player1: player1, player2: player2, rules: Rules.new()}}
+    {:ok, %{player1: player1, player2: player2, rules: Rules.new()}, @timeout}
   end
 
   @impl GenServer
@@ -55,9 +56,12 @@ defmodule IslandsEngine.Game do
       |> update_rules(rules)
       |> reply_success(:ok)
     else
+      # TODO: why keep this flat? why have it flat in the first place?
       :error -> {:reply, :error, state_data}
       {:error, :invalid_coordinate} -> {:reply, {:error, :invalid_coordinate}, state_data}
       {:error, :invalid_island_type} -> {:reply, {:error, :invalid_island_type}, state_data}
+      # TODO: this seems just better; can't b/c security? or b/c hides inexhaustive match
+      # {:error, reason} -> {:reply, {:error, reason}, state_data}
     end
   end
 
@@ -79,6 +83,11 @@ defmodule IslandsEngine.Game do
       :error -> {:reply, :error, state_data}
       {:error, :invalid_coordinate} -> {:reply, {:error, :invalid_coordinate}, state_data}
     end
+  end
+
+  @impl GenServer
+  def handle_info(:timeout, state_data) do
+    {:stop, {:shutdown, :timeout}, state_data}
   end
 
   ##################################################################
@@ -106,7 +115,7 @@ defmodule IslandsEngine.Game do
   end
 
   defp reply_success(state_data, reply) do
-    {:reply, reply, state_data}
+    {:reply, reply, state_data, @timeout}
   end
 
   defp opponent(:player1), do: :player2

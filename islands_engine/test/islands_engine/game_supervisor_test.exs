@@ -10,4 +10,14 @@ defmodule IslandsEngineTest.GameSupervisorTest do
     refute Process.alive?(game)
     refute GenServer.whereis(via)
   end
+
+  test "terminate callback" do
+    agnes = "Agnes"
+    {:ok, game} = GameSupervisor.start_game(agnes)
+    GameSupervisor.stop_game(agnes)
+    refute Process.alive?(game)
+    via = Game.via_tuple(agnes)
+    refute GenServer.whereis(via)
+    assert [] == :ets.lookup(:game_state, agnes)
+  end
 end
